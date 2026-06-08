@@ -72,7 +72,7 @@
                                         <th class="ps-3">Poltrona</th>
                                         <th>Passageiro</th>
                                         <th>Documento</th>
-                                        <th>Ações</th>
+                                        <th>Telefone</th> <th>Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -85,7 +85,7 @@
                                                 <small class="text-muted">@(r.AcompanhanteId == null ? "Titular" : "Acompanhante")</small>
                                             </td>
                                             <td class="small">@(r.Acompanhante?.RgCpf ?? r.Usuario.Rg)</td>
-                                            <td>
+                                            <td class="small">@(r.Acompanhante?.Telefone ?? r.Usuario.Telefone ?? "-")</td> <td>
                                                 <form method="post" asp-page-handler="CancelarReserva" asp-route-reservaId="@r.Id" 
                                                       onsubmit="return confirm('Liberar assento?');" class="d-inline">
                                                     <button class="btn btn-outline-danger btn-sm border-0"><i class="bi bi-person-x"></i></button>
