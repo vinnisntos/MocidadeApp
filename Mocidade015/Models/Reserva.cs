@@ -1,25 +1,25 @@
-﻿using System;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Mocidade015.Models
 {
     public class Reserva
     {
-        public Guid Id { get; set; }
+        public Guid Id { get; set; } = Guid.NewGuid();
 
-        [Column("usuarioid")]
+        [Required]
         public Guid UsuarioId { get; set; }
 
-        [Column("assentoid")]
+        [Required]
         public Guid AssentoId { get; set; }
 
-        [Column("acompanhanteid")]
         public Guid? AcompanhanteId { get; set; }
 
+        [Range(0, 10000)]
         public decimal Valor { get; set; } = 80.00m;
+
         public DateTime DataReserva { get; set; } = DateTime.UtcNow;
 
-        // Propriedades de Navegação
         public Usuario Usuario { get; set; } = null!;
         public Assento Assento { get; set; } = null!;
         public Acompanhante? Acompanhante { get; set; }

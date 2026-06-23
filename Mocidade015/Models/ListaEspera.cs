@@ -1,13 +1,13 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Mocidade015.Models
 {
     public class ListaEspera
     {
-        [Key]
-        public Guid Id { get; set; }
+        public Guid Id { get; set; } = Guid.NewGuid();
 
+        [Required]
         public Guid UsuarioId { get; set; }
 
         [Required]
@@ -16,8 +16,7 @@ namespace Mocidade015.Models
 
         public DateTime DataSolicitacao { get; set; } = DateTime.UtcNow;
 
-        // Propriedade de Navegação
-        [ForeignKey("UsuarioId")]
+        [ForeignKey(nameof(UsuarioId))]
         public virtual Usuario? Usuario { get; set; }
     }
 }

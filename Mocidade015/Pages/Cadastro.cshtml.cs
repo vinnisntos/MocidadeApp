@@ -1,64 +1,65 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using Mocidade015.Data;
 using Mocidade015.Models;
+using Mocidade015.Models.ViewModels;
 
 namespace Mocidade015.Pages
 {
     public class CadastroModel : PageModel
     {
         private readonly AppDbContext _context;
-        public CadastroModel(AppDbContext context) => _context = context;
+        private readonly ILogger<CadastroModel> _logger;
+
+        public CadastroModel(AppDbContext context, ILogger<CadastroModel> logger)
+        {
+            _context = context;
+            _logger = logger;
+        }
 
         [BindProperty]
         public CadastroInput Input { get; set; } = new();
 
-        public class CadastroInput
-        {
-            public string Nome { get; set; } = "";
-            public string Email { get; set; } = "";
-            public string Senha { get; set; } = "";
-            public string Rg { get; set; } = "";
-            
-            // Campo adicionado para o form HTML conseguir enxergar
-            public string? Telefone { get; set; } 
-        }
+        public void OnGet() { }
 
         public async Task<IActionResult> OnPostAsync()
         {
             if (!ModelState.IsValid) return Page();
 
-            // Verifica se o e-mail já existe
-            var existeemail = await _context.Usuarios.AnyAsync(u => u.Email == Input.Email);
-            if (existeemail)
+            var emailNorm = Input.Email.Trim().ToLowerInvariant();
+            var rgNorm = Input.Rg.Trim();
+
+            if (await _context.Usuarios.AnyAsync(u => u.Email.ToLower() == emailNorm))
             {
-                ModelState.AddModelError(string.Empty, "Este e-mail já está cadastrado.");
+                ModelState.AddModelError(nameof(Input.Email), "Este e-mail já está cadastrado.");
                 return Page();
             }
 
-            var existerg= await _context.Usuarios.AnyAsync(u => u.Rg == Input.Rg);
-            if (existerg)
+            if (await _context.Usuarios.AnyAsync(u => u.Rg != null && u.Rg == rgNorm))
             {
-                ModelState.AddModelError(string.Empty, "Este RG/CPF já está cadastrado");
+                ModelState.AddModelError(nameof(Input.Rg), "Este RG/CPF já está cadastrado.");
                 return Page();
             }
 
-            // Cria o usuário com Hash de senha (Segurança Sênior)
             var usuario = new Usuario
             {
                 Id = Guid.NewGuid(),
-                Nome = Input.Nome,
-                Rg = Input.Rg,
-                Email = Input.Email,
-                Telefone = Input.Telefone, // Passando o dado da tela pro banco
+                Nome = Input.Nome.Trim(),
+                Email = emailNorm,
+                Rg = rgNorm,
+                Telefone = string.IsNullOrWhiteSpace(Input.Telefone) ? null : Input.Telefone.Trim(),
                 SenhaHash = BCrypt.Net.BCrypt.HashPassword(Input.Senha),
-                Role = "Cliente"
+                Role = "Cliente",
+                DataCriacao = DateTime.UtcNow
             };
 
             _context.Usuarios.Add(usuario);
             await _context.SaveChangesAsync();
 
+            _logger.LogInformation("Novo usuário cadastrado: {Email}", emailNorm);
+
+            TempData["Toast"] = "success|Conta criada com sucesso! Faça login para continuar.";
             return RedirectToPage("/Login");
         }
     }

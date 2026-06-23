@@ -1,156 +1,220 @@
-﻿using Microsoft.EntityFrameworkCore;
+using System.Data;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Mocidade015.Data;
 using Mocidade015.Models;
+using Mocidade015.Models.Options;
 
 namespace Mocidade015.Services
 {
+    /// <summary>
+    /// Implementação do serviço de reservas com:
+    /// • Lock transacional (Serializable) para evitar corrida em assentos concorridos.
+    /// • Horários e data vindos de <see cref="ViagemOptions"/> — sem hardcode.
+    /// • UTC padronizado em todo o ciclo de vida.
+    /// </summary>
     public class ReservaService : IReservaService
     {
         private readonly AppDbContext _context;
+        private readonly ViagemOptions _viagem;
+        private readonly ILogger<ReservaService> _logger;
 
-        public ReservaService(AppDbContext context)
+        public ReservaService(
+            AppDbContext context,
+            IOptions<ViagemOptions> viagemOptions,
+            ILogger<ReservaService> logger)
         {
             _context = context;
+            _viagem = viagemOptions.Value;
+            _logger = logger;
         }
 
         public async Task<bool> ReservarAssentoAsync(Guid usuarioId, Guid assentoId, Guid? acompanhanteId)
         {
-            // 1. Pega o ônibus vinculado a esse assento
+            // 1. Verificações fora de transação (apenas leitura de validação).
             var assento = await _context.Assentos
                 .Include(a => a.Onibus)
+                .AsNoTracking()
                 .FirstOrDefaultAsync(a => a.Id == assentoId);
 
-            if (assento == null || assento.Ocupado) return false;
+            if (assento == null || assento.Ocupado)
+                return false;
 
-            // 2. REGRA: Verifica se este passageiro JÁ está no ônibus
-            // Se acompanhanteId for nulo, o passageiro é o próprio Usuário.
-            bool jaEstaNoOnibus = await _context.Reservas
-                .AnyAsync(r => r.Assento.OnibusId == assento.OnibusId &&
-                               ((acompanhanteId != null && r.AcompanhanteId == acompanhanteId) ||
-                                (acompanhanteId == null && r.UsuarioId == usuarioId && r.AcompanhanteId == null)));
-
-            if (jaEstaNoOnibus) return false; // Bloqueia a reserva duplicada
-
-            using var transaction = await _context.Database.BeginTransactionAsync();
+            // 2. Bloqueio: usamos Serializable + retry leve para concorrência de dois clientes
+            //    clicando no mesmo assento ao mesmo tempo. Funciona com Postgres + EF Core.
+            using var tx = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             try
-            {
-                assento.Ocupado = true;
-
-                var reserva = new Reserva
                 {
-                    UsuarioId = usuarioId,
-                    AcompanhanteId = acompanhanteId,
-                    AssentoId = assentoId,
-                    Valor = 80.00m,
-                    DataReserva = DateTime.UtcNow
-                };
+                    // Re-busca com tracking dentro da transação
+                    var assentoLock = await _context.Assentos
+                        .Include(a => a.Onibus)
+                        .FirstOrDefaultAsync(a => a.Id == assentoId);
 
-                _context.Reservas.Add(reserva);
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
-                return true;
+                    if (assentoLock == null || assentoLock.Ocupado)
+                    {
+                        await tx.RollbackAsync();
+                        return false;
+                    }
+
+                    // Já existe reserva para esse assento? Checagem dupla (índice único também protege).
+                    bool assentoJaReservado = await _context.Reservas
+                        .AnyAsync(r => r.AssentoId == assentoId);
+
+                    if (assentoJaReservado)
+                    {
+                        await tx.RollbackAsync();
+                        return false;
+                    }
+
+                    // Não permite reserva duplicada do mesmo passageiro (titular ou acompanhante) no mesmo ônibus.
+                    bool jaEstaNoOnibus = await _context.Reservas
+                        .AnyAsync(r => r.Assento.OnibusId == assentoLock.OnibusId &&
+                                       ((acompanhanteId != null && r.AcompanhanteId == acompanhanteId) ||
+                                        (acompanhanteId == null && r.UsuarioId == usuarioId && r.AcompanhanteId == null)));
+
+                    if (jaEstaNoOnibus)
+                    {
+                        await tx.RollbackAsync();
+                        return false;
+                    }
+
+                    assentoLock.Ocupado = true;
+
+                    var reserva = new Reserva
+                    {
+                        Id = Guid.NewGuid(),
+                        UsuarioId = usuarioId,
+                        AcompanhanteId = acompanhanteId,
+                        AssentoId = assentoId,
+                        Valor = 80.00m,
+                        DataReserva = DateTime.UtcNow
+                    };
+
+                    _context.Reservas.Add(reserva);
+                    await _context.SaveChangesAsync();
+                    await tx.CommitAsync();
+                    return true;
+                }
+            catch (DbUpdateException ex)
+            {
+                _logger.LogWarning(ex, "Conflito ao reservar assento {AssentoId}", assentoId);
+                await tx.RollbackAsync();
+                return false;
             }
             catch
             {
-                await transaction.RollbackAsync();
+                await tx.RollbackAsync();
                 return false;
             }
         }
 
         public async Task<bool> CancelarReservaAsync(Guid reservaId)
         {
-            var reserva = await _context.Reservas
-                .Include(r => r.Assento)
-                .FirstOrDefaultAsync(r => r.Id == reservaId);
-
-            if (reserva == null) return false;
-
-            using var transaction = await _context.Database.BeginTransactionAsync();
+            using var tx = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             try
             {
-                // 1. Libera o assento
-                reserva.Assento.Ocupado = false;
+                var reserva = await _context.Reservas
+                    .Include(r => r.Assento)
+                    .FirstOrDefaultAsync(r => r.Id == reservaId);
 
-                // 2. Remove a reserva
+                if (reserva == null) return false;
+
+                if (reserva.Assento != null)
+                    reserva.Assento.Ocupado = false;
+
                 _context.Reservas.Remove(reserva);
-
                 await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
+                await tx.CommitAsync();
                 return true;
             }
             catch
             {
-                await transaction.RollbackAsync();
+                await tx.RollbackAsync();
                 return false;
             }
         }
 
         public async Task VerificarEGerarNovoOnibusAsync(string terminal)
         {
-            var assentosLivres = await _context.Assentos
-                .Include(a => a.Onibus)
-                .Where(a => a.Onibus != null && a.Onibus.TerminalSaida == terminal && !a.Ocupado)
+            terminal = (terminal ?? string.Empty).Trim();
+
+            var existeOnibusComAssentosLivres = await _context.Onibus
+                .Where(o => o.TerminalSaida == terminal && o.DataViagem == _viagem.ObterDataViagem())
+                .AnyAsync(o => o.Assentos.Any(a => !a.Ocupado));
+
+            if (existeOnibusComAssentosLivres) return;
+
+            var totalOnibusNoTerminal = await _context.Onibus
+                .Where(o => o.TerminalSaida == terminal)
                 .CountAsync();
 
-            if (assentosLivres == 0)
+            var novoOnibus = new Onibus
             {
-                var numOnibusAtual = await _context.Onibus
-                    .Where(o => o.TerminalSaida == terminal).CountAsync() + 1;
+                Id = Guid.NewGuid(),
+                Numero = totalOnibusNoTerminal + 1,
+                TerminalSaida = terminal,
+                HorarioSaida = _viagem.ObterHorarioSaida(terminal),
+                DataViagem = _viagem.ObterDataViagem(),
+                LotacaoMaxima = _viagem.LotacaoPadrao,
+                Ativo = true
+            };
 
-                var novoOnibus = new Onibus
+            _context.Onibus.Add(novoOnibus);
+            await _context.SaveChangesAsync();
+
+            for (int i = 1; i <= _viagem.LotacaoPadrao; i++)
+            {
+                _context.Assentos.Add(new Assento
                 {
                     Id = Guid.NewGuid(),
-                    Numero = numOnibusAtual,
-                    TerminalSaida = terminal,
-                    HorarioSaida = terminal == "Santo Antônio" ? new TimeSpan(11, 40, 0) : new TimeSpan(12, 00, 0),
-                    DataViagem = new DateTime(2026, 07, 26, 0, 0, 0, DateTimeKind.Utc),
-                    LotacaoMaxima = 64
-                };
-
-                _context.Onibus.Add(novoOnibus);
-                await _context.SaveChangesAsync();
-
-                for (int i = 1; i <= 64; i++)
-                {
-                    _context.Assentos.Add(new Assento { Id = Guid.NewGuid(), OnibusId = novoOnibus.Id, Numero = i, Ocupado = false });
-                }
-                await _context.SaveChangesAsync();
+                    OnibusId = novoOnibus.Id,
+                    Numero = i,
+                    Ocupado = false
+                });
             }
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Novo ônibus gerado para o terminal {Terminal}: #{Numero}", terminal, novoOnibus.Numero);
         }
 
         public async Task<bool> AdicionarNaListaDeEsperaAsync(Guid usuarioId, string terminalDesejado)
         {
-            // Verifica se já está na lista de espera para este terminal
+            terminalDesejado = (terminalDesejado ?? string.Empty).Trim();
+
+            if (string.IsNullOrEmpty(terminalDesejado)) return false;
+
             var jaEstaNaLista = await _context.ListaEspera
                 .AnyAsync(l => l.UsuarioId == usuarioId && l.TerminalDesejado == terminalDesejado);
 
             if (jaEstaNaLista) return false;
 
-            // Verifica se já tem reserva em algum assento deste terminal
+            // Se já tem reserva no terminal, não precisa entrar na lista.
             var jaTemReserva = await _context.Reservas
                 .Include(r => r.Assento)
                 .ThenInclude(a => a.Onibus)
                 .AnyAsync(r => r.UsuarioId == usuarioId &&
+                               r.Assento != null &&
                                r.Assento.Onibus != null &&
                                r.Assento.Onibus.TerminalSaida == terminalDesejado);
 
             if (jaTemReserva) return false;
 
-            var entradaNaLista = new ListaEspera
+            _context.ListaEspera.Add(new ListaEspera
             {
                 Id = Guid.NewGuid(),
                 UsuarioId = usuarioId,
                 TerminalDesejado = terminalDesejado,
                 DataSolicitacao = DateTime.UtcNow
-            };
+            });
 
-            _context.ListaEspera.Add(entradaNaLista);
             await _context.SaveChangesAsync();
             return true;
         }
 
         public async Task<bool> JaEstaNaListaDeEsperaAsync(Guid usuarioId, string terminalDesejado)
         {
+            terminalDesejado = (terminalDesejado ?? string.Empty).Trim();
             return await _context.ListaEspera
                 .AnyAsync(l => l.UsuarioId == usuarioId && l.TerminalDesejado == terminalDesejado);
         }
@@ -158,7 +222,6 @@ namespace Mocidade015.Services
         public async Task<int> GetAssentosDisponiveisCountAsync(Guid onibusId)
         {
             return await _context.Assentos
-                .Include(a => a.Onibus)
                 .Where(a => a.OnibusId == onibusId && !a.Ocupado)
                 .CountAsync();
         }

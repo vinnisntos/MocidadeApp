@@ -1,22 +1,33 @@
-﻿using Microsoft.Extensions.Primitives;
-using System;
-using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace Mocidade015.Models
 {
     public class Usuario
     {
         public Guid Id { get; set; } = Guid.NewGuid();
+
+        [Required]
+        [StringLength(120, MinimumLength = 3)]
         public string Nome { get; set; } = string.Empty;
+
+        [Required]
+        [EmailAddress]
+        [StringLength(160)]
         public string Email { get; set; } = string.Empty;
+
+        [StringLength(20)]
         public string? Rg { get; set; }
-        
-        // Campo adicionado
-        public string? Telefone { get; set; } 
-        
+
+        [Phone]
+        [StringLength(20)]
+        public string? Telefone { get; set; }
+
+        [Required]
         public string SenhaHash { get; set; } = string.Empty;
 
-        // Advertendo: para alterar a role de "Cliente para Admin" é necessario fazer isso manualmente no banco de dados.
+        /// <summary>"Cliente" | "Admin". Promovido manualmente no banco.</summary>
+        [Required]
+        [StringLength(20)]
         public string Role { get; set; } = "Cliente";
 
         public DateTime DataCriacao { get; set; } = DateTime.UtcNow;
