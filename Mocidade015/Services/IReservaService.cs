@@ -11,8 +11,8 @@ namespace Mocidade015.Services
         /// <summary>Cancela uma reserva e libera o assento para nova marcação.</summary>
         Task<bool> CancelarReservaAsync(Guid reservaId);
 
-        /// <summary>Se o terminal estiver lotado, gera um novo ônibus para a viagem.</summary>
-        Task VerificarEGerarNovoOnibusAsync(string terminal);
+        /// <summary>Gera um novo ônibus para o terminal, sob decisão manual do admin.</summary>
+        Task GerarNovoOnibusAsync(string terminal);
 
         /// <summary>Adiciona um usuário na lista de espera de um terminal.</summary>
         Task<bool> AdicionarNaListaDeEsperaAsync(Guid usuarioId, string terminalDesejado);

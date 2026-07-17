@@ -135,15 +135,9 @@ namespace Mocidade015.Services
             }
         }
 
-        public async Task VerificarEGerarNovoOnibusAsync(string terminal)
+        public async Task GerarNovoOnibusAsync(string terminal)
         {
             terminal = (terminal ?? string.Empty).Trim();
-
-            var existeOnibusComAssentosLivres = await _context.Onibus
-                .Where(o => o.TerminalSaida == terminal && o.DataViagem == _viagem.ObterDataViagem())
-                .AnyAsync(o => o.Assentos.Any(a => !a.Ocupado));
-
-            if (existeOnibusComAssentosLivres) return;
 
             var totalOnibusNoTerminal = await _context.Onibus
                 .Where(o => o.TerminalSaida == terminal)

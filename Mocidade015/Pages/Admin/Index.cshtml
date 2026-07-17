@@ -60,9 +60,17 @@
                 <div class="card shadow-sm border-0 rounded-4 h-100">
                     <div class="card-header bg-azul-escuro text-white d-flex justify-content-between align-items-center py-3">
                         <span class="fw-bold">🚌 Ônibus #@onibus.Numero - @onibus.Terminal</span>
-                        <span class="badge @(onibus.TotalOcupados >= onibus.LotacaoMaxima ? "bg-danger" : "bg-success")">
-                            @onibus.TotalOcupados / @onibus.LotacaoMaxima Ocupados
-                        </span>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge @(onibus.TotalOcupados >= onibus.LotacaoMaxima ? "bg-danger" : "bg-success")">
+                                @onibus.TotalOcupados / @onibus.LotacaoMaxima Ocupados
+                            </span>
+                            <form method="post" asp-page-handler="GerarNovoOnibus" asp-route-terminal="@onibus.Terminal"
+                                  onsubmit="return confirm('Confirma a criação de um novo ônibus para @onibus.Terminal? Essa ação deve refletir uma decisão real de fretamento.');" class="d-inline d-print-none">
+                                <button class="btn btn-outline-light btn-sm border-0" title="Gerar novo ônibus para este terminal">
+                                    <i class="bi bi-plus-circle"></i> Novo ônibus
+                                </button>
+                            </form>
+                        </div>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive" style="max-height: 400px;">

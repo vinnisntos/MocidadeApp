@@ -116,13 +116,18 @@ namespace Mocidade015.Pages.App
             }
 
             var reservaExistente = await _context.Reservas
+                .Include(r => r.Assento)
                 .FirstOrDefaultAsync(r => r.Assento.OnibusId == onibusId &&
                                           r.UsuarioId == userId &&
                                           r.AcompanhanteId == acompanhanteId);
 
             if (reservaExistente != null)
             {
-                // Altera o assento
+                // Altera o assento: libera o antigo e ocupa o novo
+                var assentoNovo = await _context.Assentos.FindAsync(assentoId);
+                if (reservaExistente.Assento != null) reservaExistente.Assento.Ocupado = false;
+                if (assentoNovo != null) assentoNovo.Ocupado = true;
+
                 reservaExistente.AssentoId = assentoId;
                 await _context.SaveChangesAsync();
 
@@ -136,9 +141,6 @@ namespace Mocidade015.Pages.App
 
                 if (sucesso)
                 {
-                    var o = await _context.Onibus.FindAsync(onibusId);
-                    if (o != null) await _reservaService.VerificarEGerarNovoOnibusAsync(o.TerminalSaida);
-
                     return RedirectToPage("/App/Validado");
                 }
 

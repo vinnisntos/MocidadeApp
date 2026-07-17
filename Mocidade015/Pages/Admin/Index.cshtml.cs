@@ -77,6 +77,16 @@ public class IndexModel : PageModel
         }
         return RedirectToPage();
     }
+
+    public async Task<IActionResult> OnPostGerarNovoOnibusAsync(string terminal)
+    {
+        if (!string.IsNullOrWhiteSpace(terminal))
+        {
+            await _reservaService.GerarNovoOnibusAsync(terminal);
+            TempData["Mensagem"] = $"Novo ônibus gerado para {terminal}.";
+        }
+        return RedirectToPage();
+    }
 }
 
 public class OnibusRelatorioDTO
