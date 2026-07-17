@@ -17,12 +17,6 @@ namespace Mocidade015.Models.ViewModels
         [Display(Name = "E-mail")]
         public string Email { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Informe seu CPF.")]
-        [StringLength(14, MinimumLength = 11, ErrorMessage = "CPF deve ter 11 dígitos.")]
-        [CustomValidation(typeof(CadastroInputValidator), nameof(CadastroInputValidator.ValidarCPF))]
-        [Display(Name = "CPF")]
-        public string CPF { get; set; } = string.Empty;
-
         [Required(ErrorMessage = "Informe seu RG.")]
         [StringLength(20, ErrorMessage = "O RG não pode exceder 20 caracteres.")]
         [Display(Name = "RG")]
@@ -55,17 +49,6 @@ namespace Mocidade015.Models.ViewModels
     /// </summary>
     public static class CadastroInputValidator
     {
-        public static ValidationResult? ValidarCPF(string cpf, ValidationContext context)
-        {
-            if (string.IsNullOrWhiteSpace(cpf))
-                return new ValidationResult("CPF é obrigatório.");
-
-            if (!ValidadorCPF.ValidarCPF(cpf))
-                return new ValidationResult("CPF inválido. Verifique os dígitos verificadores.");
-
-            return ValidationResult.Success;
-        }
-
         public static ValidationResult? ValidarTelefone(string? telefone, ValidationContext context)
         {
             if (string.IsNullOrWhiteSpace(telefone))
