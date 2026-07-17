@@ -38,11 +38,23 @@ namespace Mocidade015.Pages.App
 
         public async Task<IActionResult> OnPostDeleteAsync(Guid id)
         {
-            var acompanhante = await _context.Acompanhantes.FindAsync(id);
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(userIdStr, out Guid userId)) return RedirectToPage("/Index");
+
+            var acompanhante = await _context.Acompanhantes
+                .FirstOrDefaultAsync(a => a.Id == id && a.UsuarioResponsavelId == userId);
+
             if (acompanhante != null)
             {
-                _context.Acompanhantes.Remove(acompanhante);
-                await _context.SaveChangesAsync();
+                try
+                {
+                    _context.Acompanhantes.Remove(acompanhante);
+                    await _context.SaveChangesAsync();
+                }
+                catch (DbUpdateException)
+                {
+                    TempData["Toast"] = "danger|Não foi possível excluir: este acompanhante já possui uma reserva vinculada a uma viagem.";
+                }
             }
             return RedirectToPage();
         }
