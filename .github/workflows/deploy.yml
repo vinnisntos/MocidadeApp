@@ -20,15 +20,16 @@ jobs:
     - name: 3. Publicar o projeto (Build)
       run: dotnet publish Mocidade015/Mocidade015.csproj -c Release -r linux-x64 --self-contained false -o ./publish
 
-    - name: 4. PARAR o serviço (Desbloquear arquivos)
+    - name: 4. PARAR serviço e LIMPAR pasta de destino
       uses: appleboy/ssh-action@master
       with:
         host: ${{ secrets.HOST }}
         username: ${{ secrets.USERNAME }}
         key: ${{ secrets.SSH_KEY }}
         script: |
-          sudo systemctl stop vinnisantos.service
+          sudo systemctl stop vinnisantos.service || true
           sudo mkdir -p /var/www/vinnisantos
+          sudo rm -rf /var/www/vinnisantos/*
           sudo chown -R ubuntu:ubuntu /var/www/vinnisantos
 
     - name: 5. Enviar os arquivos novos (SCP)
@@ -37,7 +38,7 @@ jobs:
         host: ${{ secrets.HOST }}
         username: ${{ secrets.USERNAME }}
         key: ${{ secrets.SSH_KEY }}
-        source: "publish"
+        source: "publish/*"
         target: "/var/www/vinnisantos"
         strip_components: 1
 
