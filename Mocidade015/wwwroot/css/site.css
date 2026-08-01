@@ -665,20 +665,20 @@ a:hover { color: var(--brand-primary-dark); }
 }
 
 /* Admin shell */
-.admin-shell { max-width: 1400px; margin: 0 auto; padding: 0 1rem; }
+.admin-shell { max-width: 1600px; margin: 0 auto; padding: 0 1.5rem; }
 
 /* Grid de cards que se adapta à quantidade real de itens — ao contrário de
    colunas Bootstrap fixas (col-lg-6...), um card sozinho não fica minúsculo
-   cercado de espaço vazio em telas largas: as colunas têm um teto de
-   largura e o grid só cresce em número de colunas quando há itens
-   suficientes para preenchê-las. */
+   cercado de espaço vazio em telas largas: cada coluna cresce (1fr) até
+   preencher a linha, e o grid só quebra em mais colunas quando há itens
+   suficientes para ocupá-las sem espremer o conteúdo. */
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 360px));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 420px));
   gap: 1rem;
 }
 .card-grid--wide {
-  grid-template-columns: repeat(auto-fit, minmax(440px, 640px));
+  grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
   gap: 1.5rem;
 }
 
