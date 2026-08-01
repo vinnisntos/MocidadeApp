@@ -22,5 +22,12 @@ namespace Mocidade015.Services
 
         /// <summary>Conta quantos assentos livres ainda existem no ônibus.</summary>
         Task<int> GetAssentosDisponiveisCountAsync(Guid onibusId);
+
+        /// <summary>
+        /// Atribui, pelo admin, um assento vago a alguém da lista de espera: cria a reserva,
+        /// ocupa o assento e remove a pessoa da fila. Retorna false se o assento não estiver mais
+        /// disponível ou se o registro de espera não existir mais.
+        /// </summary>
+        Task<bool> AtribuirVagaDaEsperaAsync(Guid esperaId, Guid assentoId);
     }
 }

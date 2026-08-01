@@ -39,6 +39,10 @@ public class IndexModel : PageModel
                     .Include(r => r.Assento)
                     .Where(r => r.Assento.OnibusId == o.Id)
                     .OrderBy(r => r.Assento.Numero)
+                    .ToList(),
+                Assentos = _context.Assentos
+                    .Where(a => a.OnibusId == o.Id)
+                    .OrderBy(a => a.Numero)
                     .ToList()
             }).ToListAsync();
 
@@ -47,6 +51,24 @@ public class IndexModel : PageModel
             .Include(l => l.Usuario)
             .OrderBy(l => l.DataSolicitacao)
             .ToListAsync();
+
+        // Nome do passageiro por assento, para exibir no mapa visual
+        foreach (var onibus in RelatorioOnibus)
+        {
+            var nomesPorAssento = onibus.Reservas.ToDictionary(
+                r => r.AssentoId,
+                r => r.Acompanhante?.Nome ?? r.Usuario?.Nome ?? "-");
+
+            foreach (var assento in onibus.Assentos)
+            {
+                nomesPorAssento.TryGetValue(assento.Id, out var nome);
+                onibus.NomesPorAssentoId[assento.Id] = nome;
+            }
+
+            onibus.FilaEsperaDoTerminal = FilaEspera
+                .Where(l => l.TerminalDesejado == onibus.Terminal)
+                .ToList();
+        }
 
         // 3. Resumo para as barrinhas de progresso
         ResumoEspera = await _context.ListaEspera
@@ -87,6 +109,14 @@ public class IndexModel : PageModel
         }
         return RedirectToPage();
     }
+
+    public async Task<IActionResult> OnPostAtribuirVagaAsync(Guid esperaId, Guid assentoId)
+    {
+        var sucesso = await _reservaService.AtribuirVagaDaEsperaAsync(esperaId, assentoId);
+        if (sucesso) TempData["Mensagem"] = "Vaga atribuída com sucesso! A pessoa saiu da lista de espera.";
+        else TempData["Erro"] = "Não foi possível atribuir a vaga. O assento pode não estar mais disponível.";
+        return RedirectToPage();
+    }
 }
 
 public class OnibusRelatorioDTO
@@ -96,6 +126,9 @@ public class OnibusRelatorioDTO
     public string Terminal { get; set; } = "";
     public int LotacaoMaxima { get; set; }
     public List<Reserva> Reservas { get; set; } = new();
+    public List<Assento> Assentos { get; set; } = new();
+    public Dictionary<Guid, string?> NomesPorAssentoId { get; set; } = new();
+    public List<ListaEspera> FilaEsperaDoTerminal { get; set; } = new();
     public int TotalOcupados => Reservas.Count;
 }
 

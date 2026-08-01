@@ -219,5 +219,77 @@ namespace Mocidade015.Services
                 .Where(a => a.OnibusId == onibusId && !a.Ocupado)
                 .CountAsync();
         }
+
+        public async Task<bool> AtribuirVagaDaEsperaAsync(Guid esperaId, Guid assentoId)
+        {
+            var espera = await _context.ListaEspera.AsNoTracking().FirstOrDefaultAsync(l => l.Id == esperaId);
+            if (espera == null) return false;
+
+            var assentoInfo = await _context.Assentos
+                .Include(a => a.Onibus)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(a => a.Id == assentoId);
+
+            if (assentoInfo == null || assentoInfo.Ocupado) return false;
+            if (assentoInfo.Onibus == null || assentoInfo.Onibus.TerminalSaida != espera.TerminalDesejado) return false;
+
+            using var tx = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            try
+            {
+                var esperaLock = await _context.ListaEspera.FirstOrDefaultAsync(l => l.Id == esperaId);
+                var assentoLock = await _context.Assentos.FirstOrDefaultAsync(a => a.Id == assentoId);
+
+                if (esperaLock == null || assentoLock == null || assentoLock.Ocupado)
+                {
+                    await tx.RollbackAsync();
+                    return false;
+                }
+
+                bool assentoJaReservado = await _context.Reservas.AnyAsync(r => r.AssentoId == assentoId);
+                if (assentoJaReservado)
+                {
+                    await tx.RollbackAsync();
+                    return false;
+                }
+
+                bool jaEstaNoOnibus = await _context.Reservas
+                    .AnyAsync(r => r.Assento.OnibusId == assentoLock.OnibusId &&
+                                   r.UsuarioId == esperaLock.UsuarioId && r.AcompanhanteId == null);
+                if (jaEstaNoOnibus)
+                {
+                    await tx.RollbackAsync();
+                    return false;
+                }
+
+                assentoLock.Ocupado = true;
+
+                _context.Reservas.Add(new Reserva
+                {
+                    Id = Guid.NewGuid(),
+                    UsuarioId = esperaLock.UsuarioId,
+                    AcompanhanteId = null,
+                    AssentoId = assentoId,
+                    Valor = 80.00m,
+                    DataReserva = DateTime.UtcNow
+                });
+
+                _context.ListaEspera.Remove(esperaLock);
+
+                await _context.SaveChangesAsync();
+                await tx.CommitAsync();
+                return true;
+            }
+            catch (DbUpdateException ex)
+            {
+                _logger.LogWarning(ex, "Conflito ao atribuir vaga da espera {EsperaId} ao assento {AssentoId}", esperaId, assentoId);
+                await tx.RollbackAsync();
+                return false;
+            }
+            catch
+            {
+                await tx.RollbackAsync();
+                return false;
+            }
+        }
     }
 }

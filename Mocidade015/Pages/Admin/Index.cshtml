@@ -64,12 +64,90 @@
                             <span class="badge @(onibus.TotalOcupados >= onibus.LotacaoMaxima ? "bg-danger" : "bg-success")">
                                 @onibus.TotalOcupados / @onibus.LotacaoMaxima Ocupados
                             </span>
+                            <button class="btn btn-outline-light btn-sm border-0 d-print-none" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#mapa-@onibus.Id" title="Ver mapa de assentos">
+                                <i class="bi bi-grid-3x3-gap"></i> Mapa
+                            </button>
                             <form method="post" asp-page-handler="GerarNovoOnibus" asp-route-terminal="@onibus.Terminal"
                                   onsubmit="return confirm('Confirma a criação de um novo ônibus para @onibus.Terminal? Essa ação deve refletir uma decisão real de fretamento.');" class="d-inline d-print-none">
                                 <button class="btn btn-outline-light btn-sm border-0" title="Gerar novo ônibus para este terminal">
                                     <i class="bi bi-plus-circle"></i> Novo ônibus
                                 </button>
                             </form>
+                        </div>
+                    </div>
+
+                    @* MAPA VISUAL DE ASSENTOS - permite atribuir vaga da espera a um assento vago *@
+                    <div class="collapse d-print-none" id="mapa-@onibus.Id">
+                        <div class="p-3 border-bottom bg-light">
+                            <div class="row row-cols-6 row-cols-sm-8 g-2 justify-content-center">
+                                @foreach (var assento in onibus.Assentos)
+                                {
+                                    var nomeOcupante = onibus.NomesPorAssentoId.GetValueOrDefault(assento.Id);
+                                    <div class="col">
+                                        @if (assento.Ocupado || !string.IsNullOrEmpty(nomeOcupante))
+                                        {
+                                            <button class="btn btn-secondary btn-sm w-100 py-2 rounded-3 opacity-50" disabled
+                                                    title="@(nomeOcupante ?? "Ocupado")">
+                                                @assento.Numero
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" class="btn btn-outline-primary btn-sm w-100 py-2 rounded-3 fw-bold"
+                                                    title="Assento vago - clique para atribuir"
+                                                    data-bs-toggle="modal" data-bs-target="#modalAtribuir-@onibus.Id"
+                                                    onclick="document.getElementById('assentoIdInput-@onibus.Id').value='@assento.Id'; document.getElementById('assentoNumeroLabel-@onibus.Id').textContent='@assento.Numero';">
+                                                @assento.Numero
+                                            </button>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                            <div class="mt-3 d-flex justify-content-center gap-4 text-muted" style="font-size: 0.8rem;">
+                                <span><i class="bi bi-square-fill text-secondary"></i> Ocupado</span>
+                                <span><i class="bi bi-square text-primary"></i> Vago (clique para atribuir vaga da espera)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    @* MODAL: atribuir vaga da lista de espera ao assento clicado *@
+                    <div class="modal fade" id="modalAtribuir-@onibus.Id" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content rounded-4">
+                                <form method="post" asp-page-handler="AtribuirVaga">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Atribuir assento <span id="assentoNumeroLabel-@onibus.Id"></span></h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <input type="hidden" name="assentoId" id="assentoIdInput-@onibus.Id" value="" />
+                                        @if (!onibus.FilaEsperaDoTerminal.Any())
+                                        {
+                                            <p class="text-muted mb-0">Não há ninguém na lista de espera para @onibus.Terminal.</p>
+                                        }
+                                        else
+                                        {
+                                            <label class="form-label fw-semibold">Escolha quem entra nesta vaga:</label>
+                                            <select name="esperaId" class="form-select" required>
+                                                @foreach (var espera in onibus.FilaEsperaDoTerminal)
+                                                {
+                                                    <option value="@espera.Id">@espera.Usuario?.Nome (esperando desde @espera.DataSolicitacao.ToString("dd/MM HH:mm"))</option>
+                                                }
+                                            </select>
+                                        }
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                        @if (onibus.FilaEsperaDoTerminal.Any())
+                                        {
+                                            <button type="submit" class="btn btn-success">
+                                                <i class="bi bi-person-check"></i> Atribuir vaga
+                                            </button>
+                                        }
+                                    </div>
+                                </form>
+                            </div>
                         </div>
                     </div>
                     <div class="card-body p-0">
