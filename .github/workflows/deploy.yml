@@ -21,51 +21,57 @@ jobs:
       - name: 3. Compilar e Publicar o Projeto (Release)
         run: dotnet publish Mocidade015/Mocidade015.csproj -c Release -r linux-x64 --self-contained false -o ./publish
 
-      - name: 4. Enviar arquivos para pasta temporária na Home (SCP)
-        uses: appleboy/scp-action@master
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          source: "publish/*"
-          target: "~/app-deploy-temp"
-          strip_components: 1
-
-      - name: 5. Atualizar a aplicação e Reiniciar o Serviço (SSH)
+      - name: 4. Criar pasta temporária no servidor (SSH)
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_KEY }}
           script: |
-            # 1. Para a aplicação e garante que o processo C# foi finalizado
+            mkdir -p /home/ubuntu/app-deploy-temp
+            rm -rf /home/ubuntu/app-deploy-temp/*
+
+      - name: 5. Enviar arquivos para pasta temporária (SCP)
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "publish/*"
+          target: "/home/ubuntu/app-deploy-temp"
+          strip_components: 1
+
+      - name: 6. Atualizar a aplicação e Reiniciar o Serviço (SSH)
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            # Parar serviço e garantir que o processo encerrou
             sudo systemctl stop vinnisantos.service || true
             sudo pkill -9 -f Mocidade015.dll || true
 
-            # 2. Garante que o diretório de destino existe
+            # Limpar a pasta do site
             sudo mkdir -p /var/www/vinnisantos
-
-            # 3. Limpa a pasta antiga do site
             sudo rm -rf /var/www/vinnisantos/*
 
-            # 4. Move os arquivos novos da pasta temporária para a pasta do servidor web
-            sudo cp -r ~/app-deploy-temp/* /var/www/vinnisantos/
+            # Copiar arquivos da staging area para /var/www/vinnisantos
+            sudo cp -r /home/ubuntu/app-deploy-temp/* /var/www/vinnisantos/
+            rm -rf /home/ubuntu/app-deploy-temp
 
-            # 5. Apaga os arquivos temporários da home
-            rm -rf ~/app-deploy-temp
-
-            # 6. Ajusta o dono da pasta e permissões
+            # Permissões finais
             sudo chown -R ubuntu:ubuntu /var/www/vinnisantos
             sudo chmod -R 755 /var/www/vinnisantos
 
-            # 7. Inicia a aplicação
+            # Subir o serviço
             sudo systemctl start vinnisantos.service
 
-            # 8. Healthcheck (valida se o serviço subiu)
+            # Validação
             sleep 2
             if sudo systemctl is-active --quiet vinnisantos.service; then
-              echo "✅ Deploy concluído! vinnisantos.service rodando com sucesso."
+              echo "✅ Deploy concluído com sucesso!"
             else
-              echo "❌ Erro ao iniciar vinnisantos.service após o deploy."
+              echo "❌ Falha ao iniciar vinnisantos.service"
               exit 1
             fi
