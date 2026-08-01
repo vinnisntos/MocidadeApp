@@ -29,39 +29,36 @@
     @* SEÇÃO 1: RESUMO DE DEMANDA (BARRINHAS) *@
     <div class="mt-4 mb-5 d-print-none">
         <h4 class="fw-bold text-brand mb-3">⏳ Resumo de Demanda (Lista de Espera)</h4>
-        <div class="row g-3">
+        <div class="card-grid">
             @foreach (var resumo in Model.ResumoEspera)
             {
                 var capRef = 44; // Referência de um ônibus padrão
                 var porcentagem = (resumo.Total * 100) / capRef;
                 var corBarra = resumo.Total >= capRef ? "progress-modern__bar--danger" : (resumo.Total >= 20 ? "progress-modern__bar--warning" : "progress-modern__bar--info");
 
-                <div class="col-12 col-md-4 col-xl-3">
-                    <div class="card-elevated stat-card h-100">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="fw-bold text-brand text-truncate">📍 @resumo.Terminal</span>
-                            <span class="pill pill--brand">@resumo.Total pessoas</span>
-                        </div>
-                        <div class="progress-modern">
-                            <div class="progress-modern__bar @corBarra"
-                                 style="width: @(porcentagem > 100 ? 100 : porcentagem)%;">
-                            </div>
-                        </div>
-                        <small class="text-muted mt-2 d-block">
-                            @(capRef - resumo.Total > 0 ? $"Faltam {capRef - resumo.Total} para um novo ônibus" : "Demanda crítica! Analisar novo fretamento.")
-                        </small>
+                <div class="card-elevated stat-card">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-bold text-brand text-truncate">📍 @resumo.Terminal</span>
+                        <span class="pill pill--brand">@resumo.Total pessoas</span>
                     </div>
+                    <div class="progress-modern">
+                        <div class="progress-modern__bar @corBarra"
+                             style="width: @(porcentagem > 100 ? 100 : porcentagem)%;">
+                        </div>
+                    </div>
+                    <small class="text-muted mt-2 d-block">
+                        @(capRef - resumo.Total > 0 ? $"Faltam {capRef - resumo.Total} para um novo ônibus" : "Demanda crítica! Analisar novo fretamento.")
+                    </small>
                 </div>
             }
         </div>
     </div>
 
     @* SEÇÃO 2: RELATÓRIO DOS ÔNIBUS *@
-    <div class="row g-4 mb-5">
+    <div class="card-grid card-grid--wide mb-5">
         @foreach (var onibus in Model.RelatorioOnibus)
         {
-            <div class="col-12 col-lg-6 col-xxl-4">
-                <div class="card-elevated card-elevated--lg h-100 overflow-hidden d-flex flex-column">
+            <div class="card-elevated card-elevated--lg overflow-hidden d-flex flex-column">
                     <div class="table-card__header flex-wrap gap-2">
                         <span class="fw-bold">🚌 Ônibus #@onibus.Numero - @onibus.Terminal</span>
                         <div class="d-flex align-items-center gap-2">
@@ -189,7 +186,6 @@
                         </table>
                     </div>
                 </div>
-            </div>
         }
     </div>
 

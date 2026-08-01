@@ -667,6 +667,21 @@ a:hover { color: var(--brand-primary-dark); }
 /* Admin shell */
 .admin-shell { max-width: 1400px; margin: 0 auto; padding: 0 1rem; }
 
+/* Grid de cards que se adapta à quantidade real de itens — ao contrário de
+   colunas Bootstrap fixas (col-lg-6...), um card sozinho não fica minúsculo
+   cercado de espaço vazio em telas largas: as colunas têm um teto de
+   largura e o grid só cresce em número de colunas quando há itens
+   suficientes para preenchê-las. */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 360px));
+  gap: 1rem;
+}
+.card-grid--wide {
+  grid-template-columns: repeat(auto-fit, minmax(440px, 640px));
+  gap: 1.5rem;
+}
+
 /* Animações sutis */
 @keyframes pulse-soft {
   0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
