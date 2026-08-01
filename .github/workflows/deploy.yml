@@ -3,7 +3,7 @@ name: Deploy Automático para AWS
 on:
   push:
     branches: [ "main" ]
-  workflow_dispatch: # Permite disparar o deploy manualmente pela aba Actions se precisar
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
@@ -21,52 +21,51 @@ jobs:
       - name: 3. Compilar e Publicar o Projeto (Release)
         run: dotnet publish Mocidade015/Mocidade015.csproj -c Release -r linux-x64 --self-contained false -o ./publish
 
-      - name: 4. Preparar Servidor (Parar serviço e limpar pasta)
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          script: |
-            # Para a aplicação (|| true impede que a pipeline quebre caso o serviço já esteja parado)
-            sudo systemctl stop vinnisantos.service || true
-
-            # Garante que o diretório existe e pertence ao usuário SSH
-            sudo mkdir -p /var/www/vinnisantos
-            sudo chown -R ${{ secrets.USERNAME }}:${{ secrets.USERNAME }} /var/www/vinnisantos
-
-            # Limpa os arquivos antigos da pasta para evitar acúmulo de DLLs desnecessárias
-            rm -rf /var/www/vinnisantos/*
-
-      - name: 5. Copiar novos arquivos para a VPS (SCP)
+      - name: 4. Enviar arquivos para pasta temporária na Home (SCP)
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_KEY }}
-          source: "publish"
-          target: "/var/www/vinnisantos"
+          source: "publish/*"
+          target: "~/app-deploy-temp"
           strip_components: 1
 
-      - name: 6. Ajustar Permissões e Iniciar o Serviço
+      - name: 5. Atualizar a aplicação e Reiniciar o Serviço (SSH)
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_KEY }}
           script: |
-            # Garante permissões corretas de execução
-            sudo chown -R ${{ secrets.USERNAME }}:${{ secrets.USERNAME }} /var/www/vinnisantos
+            # 1. Para a aplicação e garante que o processo C# foi finalizado
+            sudo systemctl stop vinnisantos.service || true
+            sudo pkill -9 -f Mocidade015.dll || true
+
+            # 2. Garante que o diretório de destino existe
+            sudo mkdir -p /var/www/vinnisantos
+
+            # 3. Limpa a pasta antiga do site
+            sudo rm -rf /var/www/vinnisantos/*
+
+            # 4. Move os arquivos novos da pasta temporária para a pasta do servidor web
+            sudo cp -r ~/app-deploy-temp/* /var/www/vinnisantos/
+
+            # 5. Apaga os arquivos temporários da home
+            rm -rf ~/app-deploy-temp
+
+            # 6. Ajusta o dono da pasta e permissões
+            sudo chown -R ubuntu:ubuntu /var/www/vinnisantos
             sudo chmod -R 755 /var/www/vinnisantos
 
-            # Inicia o serviço da aplicação
+            # 7. Inicia a aplicação
             sudo systemctl start vinnisantos.service
 
-            # Aguarda 2 segundos e valida se a aplicação subiu de fato
+            # 8. Healthcheck (valida se o serviço subiu)
             sleep 2
             if sudo systemctl is-active --quiet vinnisantos.service; then
-              echo "✅ Serviço vinnisantos.service rodando com sucesso!"
+              echo "✅ Deploy concluído! vinnisantos.service rodando com sucesso."
             else
-              echo "❌ Falha ao iniciar vinnisantos.service!"
+              echo "❌ Erro ao iniciar vinnisantos.service após o deploy."
               exit 1
             fi
