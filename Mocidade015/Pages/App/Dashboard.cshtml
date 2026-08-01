@@ -1,57 +1,55 @@
-﻿@page
+@page
 @model Mocidade015.Pages.App.DashboardModel
 @{
     ViewData["Title"] = "Escolha seu Embarque";
 }
 
-<div class="card shadow border-0 rounded-4 mb-4">
-    <div class="card-body p-4">
-        <h4 class="fw-bold text-azul-escuro mb-1">Olá, @User.Identity?.Name!</h4>
-        <p class="text-muted small mb-4">Para onde vamos no dia 26/07?</p>
+<div class="card-elevated shadow-md p-4 mb-4">
+    <h4 class="fw-bold text-brand mb-1">Olá, @User.Identity?.Name!</h4>
+    <p class="text-muted small mb-4">Para onde vamos no dia 26/07?</p>
 
-        <div class="list-group gap-3">
+    @if (!Model.ListaOnibus.Any())
+    {
+        <div class="empty-state">
+            <div class="icon"><i class="bi bi-bus-front"></i></div>
+            <p class="mt-2 mb-1">Nenhum ônibus disponível para esta data.</p>
+            <code class="small text-danger">Dica: Rode o script SQL de inserção no Supabase.</code>
+        </div>
+    }
+    else
+    {
+        <div class="list-card">
             @foreach (var item in Model.ListaOnibus)
             {
-                <div class="list-group-item border rounded-3 p-3 shadow-sm">
-                    <div class="d-flex justify-content-between align-items-center">
+                <div class="list-card__item flex-wrap justify-content-between">
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="list-card__icon"><i class="bi bi-bus-front"></i></span>
                         <div>
-                            <h6 class="fw-bold mb-1 text-azul-escuro">Terminal @item.Onibus.TerminalSaida</h6>
-                            <div class="d-flex gap-2 mt-1">
-                                <div class="badge bg-light text-dark border">
-                                    🕒 Saída: @item.Onibus.HorarioSaida.ToString(@"hh\:mm")
-                                </div>
-                                <div class="badge @(item.EstaLotado ? "bg-danger" : "bg-success")">
+                            <h6 class="fw-bold mb-1 text-brand">Terminal @item.Onibus.TerminalSaida</h6>
+                            <div class="d-flex flex-wrap gap-2">
+                                <span class="pill"><i class="bi bi-clock"></i> Saída: @item.Onibus.HorarioSaida.ToString(@"hh\:mm")</span>
+                                <span class="pill @(item.EstaLotado ? "pill--danger" : "pill--success")">
                                     @item.Ocupados/@item.LotacaoMaxima @(item.EstaLotado ? "Lotado" : "Lugares")
-                                </div>
+                                </span>
                             </div>
                         </div>
-                        <div class="d-flex gap-2">
-                            @if (item.EstaLotado)
-                            {
-                                <a asp-page="/App/ListaEspera" asp-route-terminal="@item.Onibus.TerminalSaida"
-                                   class="btn btn-warning btn-sm px-3 fw-bold">
-                                    <i class="bi bi-clock-history me-1"></i>Lista de Espera
-                                </a>
-                            }
-                            else
-                            {
-                                <a asp-page="/App/Identificacao" asp-route-onibusId="@item.Onibus.Id"
-                                   class="btn btn-primary-custom btn-sm px-3 fw-bold">
-                                    Selecionar
-                                </a>
-                            }
-                        </div>
+                    </div>
+                    <div>
+                        @if (item.EstaLotado)
+                        {
+                            <a asp-page="/App/ListaEspera" asp-route-terminal="@item.Onibus.TerminalSaida" class="btn btn-accent btn-sm">
+                                <i class="bi bi-clock-history me-1"></i>Lista de Espera
+                            </a>
+                        }
+                        else
+                        {
+                            <a asp-page="/App/Identificacao" asp-route-onibusId="@item.Onibus.Id" class="btn btn-brand btn-sm">
+                                Selecionar
+                            </a>
+                        }
                     </div>
                 </div>
             }
         </div>
-
-        @if (!Model.ListaOnibus.Any())
-        {
-            <div class="text-center py-4">
-                <p class="text-muted">Nenhum ônibus disponível para esta data.</p>
-                <code class="small text-danger">Dica: Rode o script SQL de inserção no Supabase.</code>
-            </div>
-        }
-    </div>
+    }
 </div>

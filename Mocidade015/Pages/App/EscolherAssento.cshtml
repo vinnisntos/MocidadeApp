@@ -5,80 +5,80 @@
 }
 
 <div class="text-center mb-4">
-    <h4 class="fw-bold text-azul-escuro">Selecione o assento para:</h4>
-    <span class="badge bg-primary fs-6">👤 @Model.NomePassageiro</span>
+    <h4 class="fw-bold text-brand">Selecione o assento para:</h4>
+    <span class="pill pill--brand mt-1"><i class="bi bi-person-fill"></i> @Model.NomePassageiro</span>
 </div>
 
 @if (TempData["Erro"] != null)
 {
-    <div class="alert alert-danger border-0 shadow-sm rounded-3 mb-4 text-center">
+    <div class="alert alert-danger text-center mb-4">
         @TempData["Erro"]
     </div>
 }
 
-<div class="bus-container shadow-lg p-4 rounded-5 bg-white mx-auto" style="max-width: 450px; border: 2px solid #eee;">
-    <div class="bus-front mb-4 text-center p-3 border-bottom">
-        <div class="d-inline-block p-2 bg-light rounded-circle shadow-sm">
-            <i class="bi bi-steering-wheel fs-3 text-secondary"></i>
-        </div>
-        <small class="d-block text-muted mt-2 fw-bold">FRENTE DO ÔNIBUS</small>
+<div class="bus">
+    <div class="bus__front">
+        <span class="icon-pill"><i class="bi bi-steering-wheel"></i></span>
+        <small class="text-muted fw-bold">FRENTE DO ÔNIBUS</small>
     </div>
 
-    <div class="row row-cols-5 g-2 justify-content-center">
-        
-        @foreach (var assento in Model.Assentos)
-        {
-            <div class="col">
-                @if (Model.AssentoAtualId == assento.Id)
+    @{
+        var linhas = Model.Assentos
+            .Select((assento, indice) => new { assento, indice })
+            .GroupBy(x => x.indice / 4)
+            .Select(g => g.Select(x => x.assento).ToList())
+            .ToList();
+    }
+
+    @foreach (var linha in linhas)
+    {
+        <div class="bus__row">
+            @for (int pos = 0; pos < 4; pos++)
+            {
+                if (pos == 2)
                 {
-                    <button class="btn btn-success w-100 py-3 rounded-3 shadow-sm cursor-not-allowed" disabled title="Este é o seu assento atual">
-                        @assento.Numero<br><small style="font-size: 0.7em;">Seu</small>
-                    </button>
+                    <div class="bus__corridor"></div>
+                }
+
+                var assento = linha.ElementAtOrDefault(pos);
+
+                if (assento == null)
+                {
+                    <div></div>
+                }
+                else if (Model.AssentoAtualId == assento.Id)
+                {
+                    <button class="seat seat--mine" disabled title="Este é o seu assento atual">@assento.Numero</button>
                 }
                 else if (Model.AssentosOcupadosIds.Contains(assento.Id))
                 {
-                    <button class="btn btn-secondary w-100 py-3 rounded-3 opacity-50 cursor-not-allowed" disabled title="Assento indisponível">
-                        @assento.Numero
-                    </button>
+                    <button class="seat seat--occupied" disabled title="Assento indisponível">@assento.Numero</button>
                 }
                 else
                 {
-                    <form method="post" class="m-0">
+                    <form method="post" class="form-contents">
                         <input type="hidden" name="assentoId" value="@assento.Id" />
                         <input type="hidden" name="onibusId" value="@Model.Onibus.Id" />
                         <input type="hidden" name="acompanhanteId" value="@Model.AcompanhanteId" />
-                        <button type="submit" class="btn btn-outline-primary w-100 py-3 rounded-3 fw-bold shadow-sm hover-reserva">
-                            @assento.Numero
-                        </button>
+                        <button type="submit" class="seat" title="Assento livre">@assento.Numero</button>
                     </form>
                 }
-            </div>
-            
-            @* A mágica do corredor: A cada 2 poltronas, insere uma div vazia na grade de 5 colunas *@
-            @if (assento.Numero % 4 == 2)
-            {
-                <div class="col"></div>
             }
-        }
-    </div>
-    
-    <div class="mt-4 pt-3 border-top d-flex justify-content-between text-muted" style="font-size: 0.85rem;">
+        </div>
+    }
+
+    <div class="bus__legend">
         <span><i class="bi bi-square-fill text-success"></i> Seu Lugar</span>
-        <span><i class="bi bi-square-fill text-secondary"></i> Ocupado</span>
-        <span><i class="bi bi-square text-primary"></i> Livre</span>
+        <span><i class="bi bi-square-fill text-soft"></i> Ocupado</span>
+        <span><i class="bi bi-square text-brand"></i> Livre</span>
     </div>
 
-    <div class="mt-4 pt-3 border-top text-center">
-        <p class="text-muted mb-2" style="font-size: 0.85rem;">
-            As poltronas restantes não agradam?
-        </p>
-        <a href="/App/ListaEspera?terminal=@Model.Onibus.TerminalSaida" class="btn btn-warning w-100 py-2 rounded-3 fw-bold shadow-sm">
+    <div class="divider"></div>
+
+    <div class="text-center">
+        <p class="text-muted small mb-2">As poltronas restantes não agradam?</p>
+        <a href="/App/ListaEspera?terminal=@Model.Onibus.TerminalSaida" class="btn btn-accent w-100">
             <i class="bi bi-clock-history"></i> Entrar na Lista de Espera
         </a>
     </div>
 </div>
-
-<style>
-    .cursor-not-allowed { cursor: not-allowed; }
-    .hover-reserva:hover { background-color: #0d6efd; color: white; transform: translateY(-2px); transition: 0.2s; }
-</style>

@@ -369,6 +369,17 @@ a:hover { color: var(--brand-primary-dark); }
   outline-offset: 2px;
 }
 
+/* Mapa de assentos "solto" (sem simular corredor físico) — usado no admin,
+   se auto-ajusta a qualquer largura de coluna em vez de depender de
+   breakpoints fixos (row-cols-N), que é o que deixava o grid "estranho"
+   em telas largas. */
+.seat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  gap: 0.5rem;
+}
+.seat-grid .seat { font-size: 0.85rem; aspect-ratio: 1 / 1; }
+
 /* =============================================================
    ALERTS
    ============================================================= */
@@ -515,6 +526,15 @@ a:hover { color: var(--brand-primary-dark); }
 .shadow-soft { box-shadow: var(--shadow-sm); }
 .shadow-md { box-shadow: var(--shadow-md); }
 
+/* Card estreito centralizado — substitui os vários style="max-width: XXXpx"
+   inline espalhados pelas páginas de confirmação/estado (largura consistente). */
+.narrow-card { max-width: 480px; margin: 0 auto; }
+.narrow-card--sm { max-width: 420px; margin: 0 auto; }
+
+/* Deixa um <form> "invisível" para efeitos de layout (grid/flex), para que
+   o botão dentro dele participe do grid do pai como se não houvesse form. */
+.form-contents { display: contents; }
+
 .empty-state {
   text-align: center;
   padding: 3rem 1rem;
@@ -589,6 +609,9 @@ a:hover { color: var(--brand-primary-dark); }
   border-top-right-radius: var(--radius-lg);
 }
 .table-card__scroll { max-height: 400px; overflow: auto; }
+.table-card__scroll::-webkit-scrollbar { height: 8px; width: 8px; }
+.table-card__scroll::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+.table-card__scroll::-webkit-scrollbar-track { background: var(--surface-muted); }
 
 /* Botão ícone pequeno de perigo (lixeira, person-x) */
 .btn-icon-danger {
@@ -694,4 +717,14 @@ a:hover { color: var(--brand-primary-dark); }
   .bus__row { grid-template-columns: 1fr 1fr 16px 1fr 1fr; gap: 0.35rem; }
   .seat { font-size: 0.8rem; }
   .admin-shell { padding: 0 0.75rem; }
+}
+
+/* Telas grandes: o mapa de assentos ganha um pouco mais de respiro em vez de
+   ficar preso em 480px cercado de espaço vazio, e os assentos ficam maiores
+   (alvo de clique melhor com mouse). */
+@media (min-width: 992px) {
+  .bus { max-width: 560px; padding: 2.25rem; }
+  .bus__row { gap: 0.65rem; }
+  .seat { font-size: 1.05rem; }
+  .seat-grid { grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)); gap: 0.6rem; }
 }

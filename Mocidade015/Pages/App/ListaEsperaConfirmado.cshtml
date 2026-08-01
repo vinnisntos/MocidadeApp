@@ -4,27 +4,23 @@
     ViewData["Title"] = "Confirmação";
 }
 
-<div class="container py-5">
-    <div class="card shadow border-0 rounded-4 mx-auto" style="max-width: 500px;">
-        <div class="card-body p-5 text-center">
-            <div class="mb-4">
-                <i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;"></i>
-            </div>
+<div class="narrow-card text-center">
+    <div class="card-elevated shadow-md p-4 p-lg-5">
+        <i class="bi bi-check-circle-fill icon-xl text-success"></i>
 
-            <h3 class="fw-bold text-azul-escuro mb-3">Você está na Lista!</h3>
-            <p class="text-muted mb-4">
-                Terminal: <strong>@Model.Terminal</strong>
-            </p>
+        <h3 class="fw-bold text-brand mt-3 mb-3">Você está na Lista!</h3>
+        <p class="text-muted mb-4">
+            Terminal: <strong>@Model.Terminal</strong>
+        </p>
 
-            <div class="alert alert-success border-0 shadow-sm rounded-3 mb-4">
-                <i class="bi bi-person-lines-fill me-2"></i>
-                Você é o <strong>@Model.PosicaoNaLista º</strong> da fila.
-            </div>
+        <div class="alert alert-success mb-4">
+            <i class="bi bi-person-lines-fill me-2"></i>
+            Você é o <strong>@Model.PosicaoNaLista º</strong> da fila.
+        </div>
 
-            <div class="d-grid gap-2">
-                <a href="/App/Dashboard" class="btn btn-primary-custom fw-bold py-2">Voltar ao Dashboard</a>
-                <a href="/Perfil" class="btn btn-outline-secondary py-2">Meu Perfil</a>
-            </div>
+        <div class="d-grid gap-2">
+            <a href="/App/Dashboard" class="btn btn-brand">Voltar ao Dashboard</a>
+            <a href="/Perfil" class="btn btn-ghost">Meu Perfil</a>
         </div>
     </div>
 </div>

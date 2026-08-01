@@ -1,20 +1,21 @@
-﻿@page
+@page
 @model Mocidade015.Pages.App.ValidadoModel
 @{
     ViewData["Title"] = "Reserva Validada";
 }
 
-<div class="card shadow border-0 rounded-4 text-center">
-    <div class="card-body p-5">
-        <div class="display-1 text-success mb-3">✅</div>
-        <h2 class="fw-bold text-azul-escuro">Reserva Validada!</h2>
-        <p class="text-muted">Tudo certo, Vinnicius! Sua poltrona para o dia 26/07 está garantida.</p>
-        <p class="text-muted">Para informações de pagamento, contate o <strong>Administrador Abner</strong> No Whatsapp</p>
-        <div class="data-grid mt-4" target="_blank">
-            <a href="https://wa.me/5515981623434">Whatsapp Para Pagamento</a>
-        </div>
-        <div class="d-grid mt-4">
-            <a asp-page="/App/Dashboard" class="btn btn-primary-custom btn-lg fw-bold">Voltar ao Painel</a>
+<div class="narrow-card text-center">
+    <div class="card-elevated shadow-md p-4 p-lg-5">
+        <i class="bi bi-check-circle-fill icon-xl text-success"></i>
+        <h2 class="fw-bold text-brand mt-3">Reserva Validada!</h2>
+        <p class="text-muted mb-1">Tudo certo! Sua poltrona para o dia 26/07 está garantida.</p>
+        <p class="text-muted">Para informações de pagamento, contate o <strong>Administrador Abner</strong> no WhatsApp.</p>
+
+        <div class="d-grid gap-2 mt-4">
+            <a href="https://wa.me/5515981623434" target="_blank" rel="noopener" class="btn btn-accent">
+                <i class="bi bi-whatsapp me-1"></i> WhatsApp para Pagamento
+            </a>
+            <a asp-page="/App/Dashboard" class="btn btn-brand">Voltar ao Painel</a>
         </div>
     </div>
 </div>
